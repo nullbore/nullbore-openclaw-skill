@@ -1,5 +1,5 @@
 ---
-name: nullbore-tunnels
+name: nullbore-openclaw-skill
 description: Manage NullBore tunnels via the REST API. Use when the user wants to expose a local port to the internet, create/list/close tunnels, check tunnel status, or expose an MCP server or local service temporarily. Also use when the user mentions NullBore, tunnel URLs, or needs a public URL for a local service.
 ---
 
