@@ -177,6 +177,113 @@ curl -s "${NULLBORE_SERVER:-https://tunnel.nullbore.com}/v1/tunnels" \
 pkill -x nullbore 2>/dev/null || true
 ```
 
-## Reference
+## Docker Sidecar (persistent tunnels for docker-compose projects)
 
-For full API docs: [references/api.md](references/api.md)
+For services running in Docker, the recommended approach is a **sidecar container**
+rather than installing the binary inside another container. The sidecar runs
+alongside your services on the same Docker network and handles all tunnel
+management. It persists across restarts, resolves container names via Docker
+DNS, and doesn't require modifying your existing containers.
+
+**Image:** `ghcr.io/nullbore/tunnel:latest` (linux/amd64 + linux/arm64)
+
+### Add to any docker-compose.yml
+
+```yaml
+services:
+  # Your existing service (no ports needed)
+  webapp:
+    image: your-app
+    # ...
+
+  # NullBore sidecar — exposes services through tunnels
+  nullbore-tunnel:
+    image: ghcr.io/nullbore/tunnel:latest
+    environment:
+      - NULLBORE_API_KEY=${NULLBORE_API_KEY}
+      - NULLBORE_SERVER=${NULLBORE_SERVER:-https://tunnel.nullbore.com}
+      - NULLBORE_TUNNELS=webapp:3000
+    depends_on:
+      - webapp
+    restart: unless-stopped
+```
+
+### NULLBORE_TUNNELS format
+
+Comma-separated list: `host:port` or `host:port:name`
+
+```bash
+# Single service (random slug, works on free tier)
+NULLBORE_TUNNELS=webapp:3000
+
+# Named tunnel (requires Hobby+ with claimed subdomain)
+NULLBORE_TUNNELS=webapp:3000:my-app
+
+# Multiple services
+NULLBORE_TUNNELS=api:8080:api,frontend:3000:app,admin:8081:admin
+```
+
+- `host` = the Docker service name (resolved via Docker's internal DNS)
+- `port` = the port inside that container
+- `name` = optional tunnel name (becomes the subdomain slug)
+
+### Config file mode (for TTL, auth, idle timeout)
+
+Mount a config file for more control:
+
+```yaml
+  nullbore-tunnel:
+    image: ghcr.io/nullbore/tunnel:latest
+    environment:
+      - NULLBORE_API_KEY=${NULLBORE_API_KEY}
+    volumes:
+      - ./nullbore.toml:/home/nullbore/.config/nullbore/config.toml:ro
+```
+
+```toml
+# nullbore.toml
+server = "https://tunnel.nullbore.com"
+
+[[tunnels]]
+name = "api"
+host = "webapp"
+port = 3000
+ttl  = "8h"
+auth = "demo:s3cret"
+
+[[tunnels]]
+name = "docs"
+host = "docs-server"
+port = 4000
+```
+
+### Dashboard-driven mode
+
+Omit `NULLBORE_TUNNELS` and the container runs in daemon mode, managing
+tunnels configured in the NullBore dashboard UI:
+
+```yaml
+  nullbore-tunnel:
+    image: ghcr.io/nullbore/tunnel:latest
+    environment:
+      - NULLBORE_API_KEY=${NULLBORE_API_KEY}
+```
+
+### When to use sidecar vs /nullbore open
+
+| Approach | Use case |
+|----------|----------|
+| **Sidecar container** | Persistent tunnels for services in docker-compose. Survives restarts. Production-grade. |
+| **`/nullbore open`** | Ad-hoc, temporary tunnels. Quick demos. Doesn't persist. |
+
+## Documentation
+
+- Docker integration guide: https://nullbore.com/docs/integrations/docker.html
+- CI/CD previews: https://nullbore.com/docs/use-cases/cicd-previews.html
+- Bot/agent exposure: https://nullbore.com/docs/use-cases/bot-exposure.html
+- Remote home services: https://nullbore.com/docs/use-cases/remote-home.html
+- Webhook testing: https://nullbore.com/docs/integrations/webhooks.html
+- MCP server exposure: https://nullbore.com/docs/integrations/mcp.html
+- OpenClaw skill: https://nullbore.com/docs/integrations/openclaw.html
+- Self-hosting: https://nullbore.com/docs/self-hosting.html
+- Full API reference: [references/api.md](references/api.md)
