@@ -87,21 +87,50 @@ echo "Tunnel PID: $!"
 sleep 2 && cat /tmp/nullbore-tunnel.log
 ```
 
+**Important notes:**
+- The binary installs to `~/.local/bin/nullbore` and will NOT persist across
+  container restarts. Re-run the install step if the container was restarted.
+- Do NOT use the REST API (`curl POST /v1/tunnels`) alone for opening tunnels.
+  It only registers the tunnel on the server without establishing the WebSocket
+  relay — the URL will return 502 "tunnel client unavailable".
+
 **Exposing a service on a Docker network** (e.g., grampsweb:5000):
 
 The nullbore client connects to localhost:PORT. If the target service is on
-a Docker network (not localhost), you need a local proxy:
+a Docker network (not localhost), you need a local TCP proxy.
+
+**Use a Node.js proxy** (socat is blocked in OpenClaw containers):
 
 ```bash
-# Start a TCP proxy from localhost:PROXY_PORT to container:SERVICE_PORT
-socat TCP-LISTEN:PROXY_PORT,fork,reuseaddr TCP:CONTAINER_HOST:SERVICE_PORT &
+node -e "
+const net = require('net');
+const srv = net.createServer(c => {
+  const up = net.connect({host: 'CONTAINER_HOST', port: SERVICE_PORT});
+  c.pipe(up); up.pipe(c);
+  c.on('error', () => up.destroy());
+  up.on('error', () => c.destroy());
+});
+srv.listen(PROXY_PORT, '127.0.0.1', () => console.log('proxy :PROXY_PORT → CONTAINER_HOST:SERVICE_PORT'));
+" &
 # Then expose the proxy port
 nullbore open --port PROXY_PORT
 ```
 
-Or if `socat` is not available, use a simple netcat relay or install socat:
+Replace `CONTAINER_HOST`, `SERVICE_PORT`, and `PROXY_PORT` with actual values.
+For example, to expose grampsweb:5000 via a proxy on port 5050:
+
 ```bash
-apt-get install -y socat 2>/dev/null || apk add socat 2>/dev/null
+node -e "
+const net = require('net');
+const srv = net.createServer(c => {
+  const up = net.connect({host: 'grampsweb', port: 5000});
+  c.pipe(up); up.pipe(c);
+  c.on('error', () => up.destroy());
+  up.on('error', () => c.destroy());
+});
+srv.listen(5050, '127.0.0.1', () => console.log('proxy :5050 → grampsweb:5000'));
+" &
+nullbore open --port 5050
 ```
 
 ### list
