@@ -15,7 +15,7 @@ Usage: `/nullbore <command> [args]`
 |---------|-------------|
 | `open <port>` | Expose a local port (default TTL: 1h) |
 | `open <port> --ttl 4h` | Expose with custom TTL |
-| `open <port> --name myapp` | Expose with a named subdomain (Hobby+) |
+| `open <port> --name myapp` | Expose with a named subdomain (Dev+) |
 | `open <port> --idle` | Idle timeout mode — TTL resets on traffic |
 | `list` | List active tunnels |
 | `close <id>` | Close a tunnel by ID |
@@ -216,7 +216,7 @@ Comma-separated list: `host:port` or `host:port:name`
 # Single service (random slug, works on free tier)
 NULLBORE_TUNNELS=webapp:3000
 
-# Named tunnel (requires Hobby+ with claimed subdomain)
+# Named tunnel (requires Dev+ with claimed subdomain)
 NULLBORE_TUNNELS=webapp:3000:my-app
 
 # Multiple services

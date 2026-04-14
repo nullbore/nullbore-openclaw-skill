@@ -64,7 +64,7 @@ Response: `{"status": "ok"}`
 | Plan | Max TTL | Idle TTL |
 |------|---------|----------|
 | Free | 2h | 2h |
-| Hobby | 7 days | 7 days |
+| Dev   | 7 days | 7 days |
 | Pro | Unlimited | Unlimited |
 
 ## Name Rules
